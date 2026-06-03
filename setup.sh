@@ -10,7 +10,7 @@ echo ""
 # ── Clone repos ───────────────────────────────────────────────────────────────
 clone_if_missing() {
     local url="$1" dest="$2" name="$3"
-    if [[ -d "$dest" ]]; then
+    if [[ -d "$dest/.git" ]]; then
         echo "[$name] already cloned at $dest"
     else
         echo "[$name] cloning..."
@@ -58,6 +58,10 @@ echo "=== Weights ==="
 HF_REPO="vicpantoja2/aedes-egg-weights"
 
 if command -v huggingface-cli &>/dev/null; then
+    if [[ ! -t 0 ]]; then
+        echo "Non-interactive shell detected; skipping weight download prompt."
+        echo "Run setup.sh interactively to download weights, or see README.md."
+    else
     read -rp "Download weights via huggingface-cli? [y/N] " answer
     if [[ "$answer" =~ ^[Yy]$ ]]; then
         echo "Downloading FoundIR weights..."
@@ -73,6 +77,7 @@ if command -v huggingface-cli &>/dev/null; then
         echo "Downloading detection weights..."
         huggingface-cli download "$HF_REPO" --include "yolov26/*" "rtdetr/*" --local-dir /tmp/pipeline_weights
         echo "Set YOLO_WEIGHTS and RTDETR_WEIGHTS in config.sh"
+    fi
     fi
 else
     echo "huggingface-cli not found. Download weights manually from README.md"
