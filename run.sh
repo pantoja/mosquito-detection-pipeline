@@ -14,8 +14,8 @@ INPUT=""
 DETECTOR=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --input)    INPUT="$2";    shift 2 ;;
-        --detector) DETECTOR="$2"; shift 2 ;;
+        --input)    [[ $# -ge 2 ]] || usage; INPUT="$2";    shift 2 ;;
+        --detector) [[ $# -ge 2 ]] || usage; DETECTOR="$2"; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -42,13 +42,13 @@ echo "Detector: $DETECTOR"
 echo "----------------------------------------"
 
 # ── Normalize single-file input to a directory ───────────────────────────────
+TMP_INPUT=""
 if [[ -f "$INPUT" ]]; then
     TMP_INPUT="$(mktemp -d)"
     cp "$INPUT" "$TMP_INPUT/"
     INPUT_DIR="$TMP_INPUT"
 else
     INPUT_DIR="$(realpath "$INPUT")"
-    TMP_INPUT=""
 fi
 
 cleanup() { [[ -n "$TMP_INPUT" ]] && rm -rf "$TMP_INPUT"; }
