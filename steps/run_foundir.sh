@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$SCRIPT_DIR/../config.sh"
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_FOUNDIR"
+conda activate "$CONDA_ENV_FOUNDIR" || { echo "[foundir] failed to activate conda env '$CONDA_ENV_FOUNDIR'" >> "$ERRORS_LOG"; exit 1; }
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -18,12 +18,15 @@ mkdir -p "$OUTPUT_DIR"
 cd "$FOUNDIR_DIR"
 rm -rf ./results
 
-python test.py --dataroot "$INPUT_DIR" --meta None
+if ! python test.py --dataroot "$INPUT_DIR" --meta None 2>>"$ERRORS_LOG"; then
+    echo "[foundir] test.py failed — check errors.log for details" >> "$ERRORS_LOG"
+    exit 1
+fi
 
 # Copy results to pipeline output dir, logging failures per file
 PASS=0; FAIL=0
 for src in ./results/*.png; do
-    [ -f "$src" ] || { echo "[foundir] no output files found" >> "$ERRORS_LOG"; FAIL=$((FAIL+1)); continue; }
+    [ -f "$src" ] || { echo "[foundir] test.py produced no PNG output in ./results/" >> "$ERRORS_LOG"; FAIL=$((FAIL+1)); continue; }
     fname="$(basename "$src")"
     if cp "$src" "$OUTPUT_DIR/$fname" 2>>"$ERRORS_LOG"; then
         PASS=$((PASS+1))
