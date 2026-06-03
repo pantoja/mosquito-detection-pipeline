@@ -23,10 +23,11 @@ for src in "$INPUT_DIR"/*.png; do
             FAIL=$((FAIL+1))
         fi
     else
-        if python3 -c "
+        if SRC="$src" DEST="$dest" python3 -c "
+import os
 from PIL import Image
-img = Image.open('$src').convert('RGB')
-img.save('$dest', 'JPEG', quality=95)
+img = Image.open(os.environ['SRC']).convert('RGB')
+img.save(os.environ['DEST'], 'JPEG', quality=95)
 " 2>>"$ERRORS_LOG"; then
             PASS=$((PASS+1))
         else
