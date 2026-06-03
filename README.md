@@ -1,99 +1,92 @@
-# Image Processing Pipeline
+# Pipeline de Detecção de Mosquitos
 
-Four-step pipeline: FoundIR restoration → PNG compression → StableSR super-resolution → object detection.
+Pipeline de quatro etapas: restauração com FoundIR → compressão PNG → super-resolução com StableSR → detecção de objetos.
 
-## Requirements
+## Requisitos
 
-- Linux (tested on HPC with SLURM; runs sequentially on a single machine)
+- Linux (testado em HPC com SLURM; executa sequencialmente em uma única máquina)
 - Conda
-- NVIDIA GPU with CUDA
-- ffmpeg (or Python with Pillow) for compression
+- GPU NVIDIA com CUDA
+- ffmpeg (ou Python com Pillow) para compressão
 
-## Setup
+## Instalação
 
-### 1. Clone this repo
+### 1. Clone este repositório
 
 ```bash
-git clone <this-repo> pipeline && cd pipeline
+git clone https://github.com/pantoja/mosquito-detection-pipeline pipeline && cd pipeline
 ```
 
-### 2. Edit `config.sh`
+### 2. Edite o `config.sh`
 
-Open `config.sh` and set:
-- `FOUNDIR_DIR` — where to clone FoundIR
-- `STABLESR_DIR` — where to clone StableSR
-- `STABLESR_CKPT` / `STABLESR_VQGAN_CKPT` — paths to StableSR checkpoint files
-- `YOLO_WEIGHTS` / `RTDETR_WEIGHTS` — paths to detection weights
-- Conda environment names (defaults are fine)
+Abra `config.sh` e defina apenas:
+- `FOUNDIR_DIR` — onde clonar o FoundIR
+- `STABLESR_DIR` — onde clonar o StableSR
+- Nomes dos ambientes conda (os padrões já estão configurados)
 
-### 3. Run setup
+Os caminhos dos pesos são detectados e configurados automaticamente pelo `setup.sh` após o download.
+
+### 3. Execute o setup
 
 ```bash
 ./setup.sh
 ```
 
-This clones FoundIR and StableSR, creates three conda environments, and optionally downloads weights.
+O script clona FoundIR e StableSR, cria três ambientes conda e oferece a opção de baixar os pesos automaticamente via `huggingface-cli`. Se optar pelo download automático, os caminhos dos pesos são configurados sem necessidade de edição manual.
 
-### 4. Place FoundIR weights
+### 4. Download manual dos pesos (opcional)
 
-FoundIR requires its weights at a specific path:
+Se preferir baixar manualmente, coloque os arquivos nas pastas correspondentes dentro de `weights/` e edite os caminhos em `config.sh`. O peso do FoundIR deve ser copiado para:
 
 ```
 $FOUNDIR_DIR/premodel/model-2000.pt
 ```
 
-Download from HuggingFace and rename/move accordingly:
+## Pesos
 
-```bash
-mkdir -p $FOUNDIR_DIR/premodel
-mv <downloaded_file>.pt $FOUNDIR_DIR/premodel/model-2000.pt
-```
+Todos os pesos estão hospedados em: https://huggingface.co/vicpantoja2/aedes-egg-weights
 
-## Weights
-
-All weights are hosted at: https://huggingface.co/vicpantoja2/aedes-egg-weights
-
-| Model | URL |
-|-------|-----|
+| Modelo | URL |
+|--------|-----|
 | FoundIR | https://huggingface.co/vicpantoja2/aedes-egg-weights/tree/main/foundir |
 | StableSR | https://huggingface.co/vicpantoja2/aedes-egg-weights/tree/main/stablesr |
 | RT-DETR | https://huggingface.co/vicpantoja2/aedes-egg-weights/tree/main/rtdetr |
 | YOLOv26 | https://huggingface.co/vicpantoja2/aedes-egg-weights/tree/main/yolov26 |
 
-Download with huggingface-cli:
+Download via huggingface-cli:
 
 ```bash
 huggingface-cli download vicpantoja2/aedes-egg-weights --local-dir ./weights
 ```
 
-## Usage
+## Uso
 
 ```bash
-# Run with YOLO detection
-./run.sh --input /path/to/images/ --detector yolo
+# Executar com detecção YOLO
+./run.sh --input /caminho/para/imagens/ --detector yolo
 
-# Run with RT-DETR detection
-./run.sh --input /path/to/single_image.png --detector rtdetr
+# Executar com detecção RT-DETR
+./run.sh --input /caminho/para/imagem.png --detector rtdetr
 ```
 
-Input must be PNG. Can be a single file or a directory of PNG files.
+A entrada deve ser PNG. Pode ser um único arquivo ou uma pasta com arquivos PNG.
 
-## Output
+## Saída
 
-Each run creates a timestamped directory under `output/`:
+Cada execução cria um diretório com timestamp em `output/`:
 
 ```
 output/YYYYMMDD_HHMMSS/
-├── 01_foundir/               # restored images (PNG)
-├── 02_foundir_compressed/    # compressed images (JPG, quality 95)
-├── 03_stablesr/              # super-resolved images
+├── 01_foundir/               # imagens restauradas (PNG)
+├── 02_foundir_compressed/    # imagens comprimidas (JPG, qualidade 95)
+├── 03_stablesr/              # imagens com super-resolução
 ├── 04_results/
-│   ├── annotated/            # images with bounding boxes
-│   └── data/                 # JSON detection files
-└── errors.log                # per-image failures
+│   ├── annotated/            # imagens com bounding boxes
+│   └── data/                 # arquivos JSON com detecções
+└── errors.log                # falhas por imagem
 ```
 
-Detection JSON format:
+Formato do JSON de detecção:
 
 ```json
 {

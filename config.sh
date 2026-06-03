@@ -21,3 +21,8 @@ RTDETR_WEIGHTS="/path/to/rtdetr.pt"
 CONDA_ENV_FOUNDIR="foundir"
 CONDA_ENV_STABLESR="stablesr"
 CONDA_ENV_DETECT="detect"
+
+# Caminhos dos pesos gerados automaticamente pelo setup.sh — não editar
+_PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[[ -f "$_PIPELINE_DIR/weights.env.sh" ]] && source "$_PIPELINE_DIR/weights.env.sh"
+unset _PIPELINE_DIR

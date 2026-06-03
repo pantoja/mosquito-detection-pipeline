@@ -54,36 +54,64 @@ fi
 echo ""
 
 # ── Weight download ───────────────────────────────────────────────────────────
-echo "=== Weights ==="
+echo "=== Pesos ==="
 HF_REPO="vicpantoja2/aedes-egg-weights"
+WEIGHTS_DIR="$SCRIPT_DIR/weights"
 
 if command -v huggingface-cli &>/dev/null; then
     if [[ ! -t 0 ]]; then
-        echo "Non-interactive shell detected; skipping weight download prompt."
-        echo "Run setup.sh interactively to download weights, or see README.md."
+        echo "Shell não-interativo detectado; pulando download de pesos."
+        echo "Execute setup.sh interativamente para baixar os pesos, ou consulte o README.md."
     else
-    read -rp "Download weights via huggingface-cli? [y/N] " answer
-    if [[ "$answer" =~ ^[Yy]$ ]]; then
-        echo "Downloading FoundIR weights..."
-        huggingface-cli download "$HF_REPO" --include "foundir/*" --local-dir /tmp/pipeline_weights
-        echo ""
-        echo "Place the downloaded weight file as:"
-        echo "  $FOUNDIR_DIR/premodel/model-2000.pt"
-        echo ""
-        echo "Downloading StableSR weights..."
-        huggingface-cli download "$HF_REPO" --include "stablesr/*" --local-dir /tmp/pipeline_weights
-        echo "Set STABLESR_CKPT and STABLESR_VQGAN_CKPT in config.sh"
-        echo ""
-        echo "Downloading detection weights..."
-        huggingface-cli download "$HF_REPO" --include "yolov26/*" "rtdetr/*" --local-dir /tmp/pipeline_weights
-        echo "Set YOLO_WEIGHTS and RTDETR_WEIGHTS in config.sh"
-    fi
+        read -rp "Baixar pesos via huggingface-cli? [s/N] " answer
+        if [[ "$answer" =~ ^[SsYy]$ ]]; then
+            echo "Baixando pesos FoundIR..."
+            huggingface-cli download "$HF_REPO" --include "foundir/*" --local-dir "$WEIGHTS_DIR"
+
+            echo "Baixando pesos StableSR..."
+            huggingface-cli download "$HF_REPO" --include "stablesr/*" --local-dir "$WEIGHTS_DIR"
+
+            echo "Baixando pesos de detecção..."
+            huggingface-cli download "$HF_REPO" --include "yolov26/*" "rtdetr/*" --local-dir "$WEIGHTS_DIR"
+
+            echo ""
+            echo "Configurando caminhos dos pesos automaticamente..."
+
+            # FoundIR: copy to hardcoded path required by test.py
+            FOUNDIR_PT=$(ls "$WEIGHTS_DIR/foundir/"*.pt 2>/dev/null | head -1 || true)
+            if [[ -n "$FOUNDIR_PT" ]]; then
+                mkdir -p "$FOUNDIR_DIR/premodel"
+                cp "$FOUNDIR_PT" "$FOUNDIR_DIR/premodel/model-2000.pt"
+                echo "[FoundIR] peso copiado para $FOUNDIR_DIR/premodel/model-2000.pt"
+            else
+                echo "[FoundIR] AVISO: nenhum .pt encontrado em $WEIGHTS_DIR/foundir/"
+            fi
+
+            # StableSR: detect VQGAN (matches *vqgan*) and main checkpoint (the rest)
+            STABLESR_VQGAN=$(ls "$WEIGHTS_DIR/stablesr/"*vqgan* 2>/dev/null | head -1 || true)
+            STABLESR_MAIN=$(ls "$WEIGHTS_DIR/stablesr/"*.ckpt "$WEIGHTS_DIR/stablesr/"*.pth 2>/dev/null \
+                | grep -iv vqgan | head -1 || true)
+
+            # Detection weights
+            YOLO_PT=$(ls "$WEIGHTS_DIR/yolov26/"*.pt 2>/dev/null | head -1 || true)
+            RTDETR_PT=$(ls "$WEIGHTS_DIR/rtdetr/"*.pt 2>/dev/null | head -1 || true)
+
+            # Write weights.env.sh — sourced automatically by config.sh
+            cat > "$SCRIPT_DIR/weights.env.sh" << EOF
+# Gerado automaticamente por setup.sh — não editar manualmente
+STABLESR_CKPT="$STABLESR_MAIN"
+STABLESR_VQGAN_CKPT="$STABLESR_VQGAN"
+YOLO_WEIGHTS="$YOLO_PT"
+RTDETR_WEIGHTS="$RTDETR_PT"
+EOF
+            echo "[pesos] caminhos salvos em weights.env.sh"
+        fi
     fi
 else
-    echo "huggingface-cli not found. Download weights manually from README.md"
+    echo "huggingface-cli não encontrado. Baixe os pesos manualmente conforme o README.md"
 fi
 
 echo ""
-echo "=== Setup complete ==="
-echo "Next: edit config.sh with your model paths, then run:"
-echo "  ./run.sh --input /path/to/images --detector yolo"
+echo "=== Setup concluído ==="
+echo "Próximo passo: execute o pipeline com:"
+echo "  ./run.sh --input /caminho/para/imagens --detector yolo"
